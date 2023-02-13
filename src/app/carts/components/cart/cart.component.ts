@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup } from '@angular/forms';
+import { ProductsService } from 'src/app/products/services/products.service';
 import { CartsService } from '../../services/carts.service';
 
 @Component({
@@ -8,73 +10,50 @@ import { CartsService } from '../../services/carts.service';
 })
 export class CartComponent implements OnInit{
 
-  cartProducts: any = [];
+  carts: any[] = [];
+  products: any[] = [];
   total: any = 0;
-  success: boolean = false
+  form!:FormGroup;
+  details: any;
 
-  constructor(private cartService: CartsService) {}
+  constructor(private cartService: CartsService,private build: FormBuilder ,private productService: ProductsService) {}
 
   ngOnInit(): void {
-    this.getCartProducts();
-  }
-
-  getCartProducts() {
-    if("cart" in localStorage) {
-      this.cartProducts = JSON.parse(localStorage.getItem("cart")!);
-    }
-    this.getCartTotal();
-  }
-
-  getCartTotal() {
-    this.total = 0;
-    for(let i in this.cartProducts) {
-      this.total += this.cartProducts[i].item.price * this.cartProducts[i].quantity;
-    }
-  }
-
-  minsAmount(index: number) {
-    this.cartProducts[index].quantity--;
-    this.getCartTotal();
-    localStorage.setItem("cart" , JSON.stringify(this.cartProducts));
-  }
-
-  plusAmount(index: number) {
-    this.cartProducts[index].quantity++;
-    this.getCartTotal();
-    localStorage.setItem("cart" , JSON.stringify(this.cartProducts));
-  }
-
-  detectChange() {
-    this.getCartTotal();
-    localStorage.setItem("cart" , JSON.stringify(this.cartProducts));
-  }
-
-  deleteProduct(index: number) {
-    this.cartProducts.splice(index , 1);
-    this.getCartTotal();
-    localStorage.setItem("cart" , JSON.stringify(this.cartProducts));
-  }
-
-  clearCart() {
-    this.cartProducts = [];
-    this.getCartTotal();
-    localStorage.setItem("cart" , JSON.stringify(this.cartProducts));
-  }
-
-  addCart() {
-    let products = this.cartProducts.map((product: any) => {
-      return {productId: product.item.id , quantity: product.quantity}
+    this.form = this.build.group({
+      start:[''],
+      end:['']
     })
-
-    let Model = {
-      userId: 5,
-      date: new Date(),
-      products: products
-    }
-
-    this.cartService.CreateNewCart(Model).subscribe(res => {
-      this.success = true;
-    })
-    console.log(Model)
+    this.getAllCarts();
   }
+
+  getAllCarts() {
+    this.cartService.getAllCarts().subscribe((res:any) => {
+      this.carts =res;
+    })
+  }
+
+  applyFilter() {
+    let date = this.form.value;
+    this.cartService.getAllCarts(date).subscribe((res:any) => {
+      this.carts =res;
+    })
+  }
+
+  deleteCart(id: number) {
+    this.cartService.deleteCart(id).subscribe(res => {
+      this.getAllCarts();
+      alert("Cart Deleted Susseccfully")
+    })
+  }
+
+  view(index:number) {
+    this.products = []
+    this.details = this.carts[index];
+    for(let x in this.details.products) {
+      this.productService.getProductById(this.details.products[x].productId).subscribe(res => {
+        this.products.push({item: res , quantity:this.details.products[x].quantity})
+      })
+    }
+    console.log(this.details)
+  } 
 }
